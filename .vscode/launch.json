@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Inspect balanced scenario",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/out/tesseractdtl",
+      "args": ["inspect", "balanced"],
+      "cwd": "${workspaceFolder}",
+      "externalConsole": false
+    }
+  ]
+}
