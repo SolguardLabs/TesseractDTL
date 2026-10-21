@@ -24,6 +24,7 @@ const sources = [
   "src/reconcile.cpp",
   "src/scenario.cpp",
   "src/report.cpp",
+  "src/treasury.cpp",
   "src/main.cpp",
 ].map((file) => join(root, file));
 
@@ -52,7 +53,8 @@ function compilerCandidates() {
   const explicit = process.env.CXX ? [process.env.CXX] : [];
   const native =
     process.platform === "win32" ? ["clang++", "g++", "c++", "cl"] : ["c++", "g++", "clang++"];
-  const discovered = process.platform === "win32" ? findMsvcVcvars().map((path) => `vcvars:${path}`) : [];
+  const discovered =
+    process.platform === "win32" ? findMsvcVcvars().map((path) => `vcvars:${path}`) : [];
   return [...explicit, ...native, ...discovered].filter(
     (value, index, array) => value && array.indexOf(value) === index,
   );
@@ -154,7 +156,9 @@ for (const compiler of compilerCandidates()) {
 }
 
 if (attempted.length === 0) {
-  console.error("No C++ compiler found. Install g++, clang++, c++, or run from a Visual Studio Developer Prompt.");
+  console.error(
+    "No C++ compiler found. Install g++, clang++, c++, or run from a Visual Studio Developer Prompt.",
+  );
 } else {
   console.error(`Compilation failed with: ${attempted.join(", ")}`);
 }
