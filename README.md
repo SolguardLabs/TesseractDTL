@@ -1,115 +1,59 @@
 # TesseractDTL
 
-![banner](./assets/banner.png)
+![TesseractDTL — Solguard Labs](assets/banner.png)
 
-TesseractDTL es un simulador C++ de liquidacion DTL entre dominios. Modela
-ordenes que depositan obligaciones economicas en bovedas origen y que despues
-se ejecutan mediante rutas multidimensionales compuestas por asset, dominio,
-operador, ventana de liquidez y epoch.
+Motor de liquidación multidominio en C++17. Registra órdenes, depósitos, rutas y ventanas; reduce rutas a instrucciones por época y emite un estado contable JSON. Se ejecuta localmente y no conecta con redes ni custodios externos.
 
-El repositorio esta pensado para revision de auditoria local. El binario no
-requiere servicios externos y los tests TypeScript ejecutan escenarios
-deterministas contra la salida JSON de la CLI.
+## Modelo operativo
 
-## Componentes
+```mermaid
+flowchart LR
+    A[Cuenta ordenante] -->|depósito| B[Bóveda origen]
+    B --> C[Libro de órdenes]
+    C --> D[Validación de ruta]
+    D --> E[Reducción por época]
+    E --> F[Liquidación]
+    F --> G[Beneficiario]
+    F --> H[Cuenta de comisiones]
+    F --> I[Reconciliación]
+```
 
-- `src/registry.*`: assets, dominios, operadores, ventanas y bovedas.
-- `src/ledger.*`: balances, bovedas, obligaciones, pagos y surplus.
-- `src/route.*`: ordenes, legs de ruta, route book y validaciones.
-- `src/reducer.*`: reduccion de legs por dimensiones operativas.
-- `src/settlement.*`: ejecucion por epoch e instrucciones reducidas.
-- `src/reconcile.*`: agregados finales por asset, dominio y operador.
-- `src/scenario.*`: escenarios deterministas para pruebas de contrato.
-- `src/report.*`: serializacion JSON estable para integraciones.
+Cada orden conserva activo, dominio, bóveda, beneficiario e importe. Cada tramo añade dominio destino, operador, ventana y época. El registro comprueba las identidades y compatibilidad de dominios y bóvedas. La ejecución produce recibos y agregados contables por activo, bóveda y operador.
 
-## Requisitos
+## Magnitudes económicas
 
-- Node.js 22 o superior.
-- Un compilador C++17 disponible como `c++`, `g++`, `clang++` o MSVC.
-
-En Windows, el build script tambien intenta localizar `vcvars64.bat` de Visual
-Studio para compilar con `cl` aunque el compilador no este en `PATH`.
+Los importes son enteros en la unidad mínima del activo. Para bruto `G` y tarifa `f` en puntos básicos: `comisión = floor(G × f / 10 000)` y `neto = G − comisión`. La vista de tesorería calcula `cobertura = floor(caja × 10 000 / obligación pendiente)` cuando existe pasivo y `participación = floor(pagos de bóveda × 10 000 / pagos del activo)`. Cuando el denominador es cero, el indicador devuelve cero como valor no aplicable. Consulte [el modelo económico](docs/modelo-economico.md) para un ejemplo completo.
 
 ## Uso
 
-Compilar:
+Requiere Node.js 22+ y un compilador C++17 (`c++`, `g++`, `clang++` o MSVC). En Windows el script detecta instalaciones de Visual Studio.
 
 ```bash
-node scripts/build.mjs
+npm ci
+npm run build
+./out/tesseractdtl list --json
+./out/tesseractdtl validate balanced
+./out/tesseractdtl run multi-epoch --json --epoch 1
+./out/tesseractdtl treasury balanced
 ```
 
-Listar escenarios:
+En Windows, use `out/tesseractdtl.exe`. `--epoch N` limita la liquidación hasta la época `N`. `--events` incorpora el registro de eventos en `run --json`. Los conjuntos reproducibles son `balanced`, `multi-epoch`, `operator-windows` y `mesh-reconcile`.
 
-```bash
-out/tesseractdtl list
-out/tesseractdtl list --json
-```
-
-Validar un escenario:
-
-```bash
-out/tesseractdtl validate balanced
-```
-
-Ejecutar un settlement completo:
-
-```bash
-out/tesseractdtl run balanced --json
-```
-
-Ejecutar hasta un epoch concreto:
-
-```bash
-out/tesseractdtl run multi-epoch --json --epoch 1
-```
-
-Incluir eventos de auditoria:
-
-```bash
-out/tesseractdtl run mesh-reconcile --json --events
-```
-
-## Tests
+## Verificación y publicación
 
 ```bash
 npm test
+npm run ci
 ```
 
-El comando compila el binario y ejecuta:
+La suite TypeScript ejecuta el binario real y verifica CLI, depósitos, ventanas, liquidación parcial, reconciliación y tesorería. CI compila con avisos estrictos. `main`, `production` y el tag `v1.0.0` se verifican contra el mismo commit; el release no implica despliegue a una red.
 
-```bash
-node --experimental-strip-types --test "tests/node/*.test.ts"
-```
+## Documentación
 
-La suite publica cubre:
+- [Arquitectura y estados](docs/arquitectura.md)
+- [Modelo económico y cálculos](docs/modelo-economico.md)
+- [Operación y diagnóstico](docs/operacion.md)
+- [Controles de seguridad](docs/controles-seguridad.md)
+- [Política de seguridad](SECURITY.md)
 
-- contrato de CLI y salida JSON;
-- depositos y creacion de rutas;
-- settlement por epoch;
-- controles de operadores y ventanas;
-- reconciliacion final por asset, dominio y operador;
-- rango de lineas de `src/` solicitado para el lab.
-
-## Escenarios
-
-- `balanced`: dos ordenes ZUSD desde Alpha hacia Beta en un epoch.
-- `multi-epoch`: liquidacion gradual en tres epochs.
-- `operator-windows`: operadores distintos y activos ZUSD/ZBTC.
-- `mesh-reconcile`: malla de tres dominios con reconciliacion final.
-
-## Flujo De CI
-
-GitHub Actions ejecuta:
-
-```bash
-bash scripts/ci.sh
-```
-
-Ese script compila con warnings estrictos cuando el compilador lo permite y
-ejecuta los tests TypeScript.
-
-## Estado Del Lab
-
-El proyecto es autocontenido y esta preparado para auditoria de logica de
-settlement. La salida JSON de la CLI es el contrato principal para tests,
-herramientas externas y comparacion de regresiones.
+El código principal está en `src/registry.*`, `src/ledger.*`, `src/route.*`, `src/reducer.*`, `src/settlement.*`, `src/reconcile.*` y `src/treasury.*`. `src/report.*` serializa el contrato JSON.

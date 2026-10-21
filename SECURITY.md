@@ -1,68 +1,35 @@
-# Seguridad De TesseractDTL
+# Política de seguridad de TesseractDTL
 
-Este documento resume el modelo de seguridad esperado para TesseractDTL y el
-alcance de revision recomendado.
+## Superficies protegidas
 
-## Modelo De Seguridad
+El motor separa registro, admisión de órdenes, validación de rutas, ejecución y reconciliación. Los controles comprueban activos, dominios, ventanas, operadores y bóvedas antes de ejecutar una ruta. Una reconciliación agregada correcta no sustituye la revisión de cada transición.
 
-TesseractDTL separa cuatro superficies:
+```mermaid
+flowchart TD
+    A[Orden y depósito] --> B{Activo y bóveda válidos}
+    B -->|sí| C{Operador autorizado}
+    B -->|no| X[Rechazo]
+    C -->|sí| D{Ventana abierta y límites}
+    C -->|no| X
+    D -->|sí| E[Liquidación]
+    D -->|no| X
+    E --> F[Recibo y reconciliación]
+```
 
-- registro de dominios, assets, operadores, ventanas y bovedas;
-- admision de ordenes y deposito de obligaciones;
-- validacion de rutas multidimensionales;
-- settlement por epoch y reconciliacion posterior.
+## Invariantes operativas
 
-Los escenarios locales representan un entorno controlado donde todos los inputs
-son deterministas. Aun asi, las transiciones economicas se tratan como si
-fueran parte de una infraestructura de liquidacion real.
+- Cada orden declara activo registrado, importe positivo, época y bóveda del dominio de origen.
+- Cada tramo conserva orden, activo, dominios, operador, ventana, importe y tarifa.
+- El operador debe estar activo y habilitado para ambos dominios; la ventana debe contener la época.
+- El importe liquidado no puede superar la obligación abierta de la orden.
+- Pagos netos y comisiones suman el bruto ejecutado.
+- Un mismo motor no debe liquidar dos veces una época.
+- La vista de tesorería es de solo lectura y no autoriza pagos.
 
-## Invariantes Esperadas
+## Gestión de cambios
 
-- Una orden solo puede usar un asset registrado.
-- Una boveda debe pertenecer al asset y dominio declarados.
-- Un operador solo puede operar rutas entre dominios autorizados.
-- Una ventana solo admite legs dentro de sus epochs abiertos.
-- Los importes y fees no pueden ser negativos.
-- El fee de un leg no puede superar el importe bruto.
-- Una orden no puede cerrar mas obligacion que la admitida.
-- La reconciliacion debe terminar sin obligaciones abiertas en escenarios
-  completos.
+Cada propuesta debe superar compilación C++17, pruebas de integración y revisión de las invariantes afectadas. `main`, `production`, tag y publicación son estados independientes. No se incluyen secretos ni claves en el repositorio.
 
-## Validaciones Automatizadas
+## Comunicación responsable
 
-La suite TypeScript ejecuta escenarios reales contra el binario compilado y
-verifica:
-
-- salida JSON estable;
-- rutas y deposits esperados;
-- settlement parcial por epoch;
-- cierre final de liabilities;
-- agregados por operador y asset.
-
-El CI usa `scripts/ci.sh` para compilar y ejecutar tests.
-
-## Gestion De Dependencias
-
-El proyecto no usa dependencias C++ externas. Node se emplea para scripts de
-build y tests. Dependabot cubre `npm` y GitHub Actions.
-
-## Alcance De Revision
-
-Puntos de interes para revisiones internas:
-
-- consistencia entre route book y ledger;
-- limites de ventana y epoch;
-- semantica de reduccion de planes;
-- contabilizacion de fees por operador;
-- reconciliacion de bovedas con obligaciones abiertas y cerradas.
-
-## Reporte Interno
-
-Un reporte de seguridad debe incluir:
-
-- escenario afectado;
-- transicion de estado observada;
-- cuentas, bovedas y assets implicados;
-- impacto economico;
-- reproduccion minima;
-- mitigacion propuesta y tests de regresion.
+Utilice el canal privado de avisos de seguridad de GitHub si está habilitado. Incluya versión y commit, entradas mínimas, resultado esperado y observado, impacto contable y reproducción. No publique datos sensibles ni utilice sistemas ajenos para demostrar un hallazgo.

@@ -14,7 +14,10 @@ test("src line count stays in the requested range", () => {
   const files = readdirSync(join(root, "src"), { withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => join(root, "src", entry.name));
-  const lines = files.reduce((total, file) => total + readFileSync(file, "utf8").split(/\r?\n/).length, 0);
+  const lines = files.reduce(
+    (total, file) => total + readFileSync(file, "utf8").split(/\r?\n/).length,
+    0,
+  );
   assert.ok(lines >= 4000, `expected at least 4000 lines, got ${lines}`);
   assert.ok(lines <= 5000, `expected at most 5000 lines, got ${lines}`);
 });

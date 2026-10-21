@@ -1,6 +1,7 @@
 #include "errors.hpp"
 #include "report.hpp"
 #include "scenario.hpp"
+#include "treasury.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -26,6 +27,7 @@ void usage(std::ostream& out) {
     out << "  validate <scenario>\n";
     out << "  inspect <scenario> [--epoch N]\n";
     out << "  run <scenario> [--json] [--events] [--epoch N]\n";
+    out << "  treasury <scenario> [--epoch N]\n";
     out << "\n";
     out << "Scenarios are built in and deterministic.\n";
 }
@@ -38,7 +40,7 @@ Args parse(int argc, char** argv) {
     }
     args.command = argv[1];
     int index = 2;
-    if (args.command == "run" || args.command == "validate" || args.command == "inspect") {
+    if (args.command == "run" || args.command == "validate" || args.command == "inspect" || args.command == "treasury") {
         if (index >= argc) {
             throw tdtl::ScenarioError("missing scenario name");
         }
@@ -81,6 +83,11 @@ int run(const Args& args) {
     if (args.command == "inspect") {
         const auto state = builder.build(args.scenario, args.epoch);
         tdtl::ReportWriter::writeText(std::cout, state);
+        return 0;
+    }
+    if (args.command == "treasury") {
+        const auto state = builder.build(args.scenario, args.epoch);
+        tdtl::TreasuryAnalyzer::writeJson(std::cout, state);
         return 0;
     }
     if (args.command == "run") {
